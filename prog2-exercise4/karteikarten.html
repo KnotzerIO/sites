@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Karteikarten – Design Patterns & Principles (PRG2)</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1d27;
+    --card2: #20232f;
+    --accent: #6ea8fe;
+    --accent2: #7ee787;
+    --text: #e6e8ee;
+    --muted: #9aa0b0;
+    --border: #2c303d;
+    --back: #161b2e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  header {
+    padding: 24px 20px 12px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+  header p { margin: 0; color: var(--muted); font-size: .85rem; }
+  .toolbar {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(15,17,23,.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex; flex-direction: column; gap: 10px; align-items: center;
+  }
+  .cats { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .cat-btn {
+    background: var(--card); color: var(--muted);
+    border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 13px; font-size: .8rem; cursor: pointer; transition: .15s;
+  }
+  .cat-btn:hover { color: var(--text); }
+  .cat-btn.active { background: var(--accent); color: #0b1020; border-color: var(--accent); font-weight: 600; }
+  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: center; width: 100%; max-width: 640px; }
+  #search {
+    flex: 1; min-width: 180px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); padding: 9px 12px; font-size: .9rem;
+  }
+  .btn {
+    background: var(--card2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 14px; font-size: .85rem; cursor: pointer; transition: .15s;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .counter { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+  main { max-width: 760px; margin: 0 auto; padding: 22px 16px 60px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    margin: 0 0 14px; overflow: hidden; transition: border-color .15s;
+  }
+  .card:hover { border-color: #3a4050; }
+  .card-head {
+    padding: 16px 18px; cursor: pointer; display: flex; gap: 12px; align-items: flex-start;
+  }
+  .card-head:hover { background: var(--card2); }
+  .tag {
+    font-size: .66rem; text-transform: uppercase; letter-spacing: .04em;
+    background: var(--back); color: var(--accent); border: 1px solid var(--border);
+    padding: 3px 8px; border-radius: 6px; white-space: nowrap; margin-top: 2px;
+  }
+  .q { font-weight: 600; font-size: 1rem; flex: 1; }
+  .chev { color: var(--muted); transition: transform .2s; margin-top: 2px; }
+  .card.open .chev { transform: rotate(90deg); }
+  .answer {
+    max-height: 0; overflow: hidden; transition: max-height .3s ease;
+    border-top: 1px solid transparent;
+  }
+  .card.open .answer { max-height: 2200px; border-top-color: var(--border); }
+  .answer-inner { padding: 16px 18px; color: #d3d7e2; font-size: .92rem; }
+  .answer-inner ul { margin: 6px 0; padding-left: 20px; }
+  .answer-inner li { margin: 3px 0; }
+  .answer-inner code {
+    background: var(--back); padding: 2px 6px; border-radius: 5px;
+    font-size: .85em; color: var(--accent2); font-family: "SF Mono", Menlo, Consolas, monospace;
+  }
+  .answer-inner .app {
+    margin-top: 12px; padding: 10px 12px; background: var(--back);
+    border-left: 3px solid var(--accent2); border-radius: 0 8px 8px 0; font-size: .88rem;
+  }
+  .answer-inner .app b { color: var(--accent2); }
+  .empty { text-align: center; color: var(--muted); padding: 40px; }
+  footer { text-align: center; color: var(--muted); font-size: .75rem; padding: 20px; }
+  mark { background: var(--accent); color: #0b1020; border-radius: 3px; padding: 0 2px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎴 Karteikarten – Design Patterns &amp; Principles</h1>
+  <p>Programmierung 2 ILV · Prüfungsvorbereitung · Klick auf eine Karte zum Aufdecken</p>
+</header>
+
+<div class="toolbar">
+  <div class="cats" id="cats"></div>
+  <div class="controls">
+    <input id="search" type="text" placeholder="🔍 Suchen … (Frage oder Antwort)">
+    <button class="btn" id="shuffle">🔀 Mischen</button>
+    <button class="btn" id="toggleAll">⬇︎ Alle</button>
+    <span class="counter" id="counter"></span>
+  </div>
+</div>
+
+<main id="list"></main>
+<footer>20 Prüfungsfragen + Zusatzkarten · bezogen auf die Movie-DB-App von Team 4</footer>
+
+<script>
+const CARDS = [
+  // ---------- GRUNDLAGEN ----------
+  { cat: "Grundlagen", q: "Was sind Design Patterns?", a: `
+    Erprobte, wiederverwendbare <b>Lösungsschablonen</b> für wiederkehrende Probleme im Software-Design.
+    <ul>
+      <li>Kein fertiger Code, sondern ein <b>Bauplan/Konzept</b>, den man an die eigene Situation anpasst.</li>
+      <li>Sie wurden „gefunden, nicht erfunden" – aus der Praxis destilliert (Gang of Four, 1994).</li>
+      <li>Schaffen ein <b>gemeinsames Vokabular</b> zwischen Entwicklern und dokumentieren bewährte Architektur.</li>
+    </ul>` },
+
+  { cat: "Grundlagen", q: "In welche Kategorien lassen sich GoF-Patterns unterteilen? Erkläre sie.", a: `
+    Drei Kategorien nach ihrem <b>Zweck</b>:
+    <ul>
+      <li><b>Creational (Erzeugungsmuster):</b> regeln die Objekterzeugung, erhöhen Flexibilität &amp; Wiederverwendbarkeit. → Singleton, Builder, Factory, Prototype.</li>
+      <li><b>Structural (Strukturmuster):</b> wie Objekte/Klassen zu größeren Strukturen zusammengesetzt werden, ohne starr zu werden. → Adapter, Bridge, Composite, Facade.</li>
+      <li><b>Behavioral (Verhaltensmuster):</b> Kommunikation &amp; Verteilung von Verantwortlichkeiten zwischen Objekten. → Strategy, Observer, State, Chain of Responsibility.</li>
+    </ul>` },
+
+  { cat: "Grundlagen", q: "Nenne Vorteile von Design Patterns.", a: `
+    <ul>
+      <li>Wiederverwendbare, <b>erprobte Lösungen</b> – kein Rad neu erfinden.</li>
+      <li><b>Gemeinsames Vokabular</b> → bessere Kommunikation im Team.</li>
+      <li>Höhere <b>Wartbarkeit, Erweiterbarkeit und Testbarkeit</b>.</li>
+      <li><b>Lose Kopplung</b> und mehr Flexibilität.</li>
+      <li>Dokumentieren bewährte Design-Entscheidungen.</li>
+    </ul>` },
+
+  { cat: "Grundlagen", q: "Was versteht man unter „Coupling\" (Kopplung) von Klassen?", a: `
+    Kopplung = <b>Grad der Abhängigkeit</b> zwischen Klassen/Modulen.
+    <ul>
+      <li><b>Hohe/Tight Coupling:</b> Klasse kennt konkrete Details einer anderen; eine Änderung erzwingt Änderungen an vielen Stellen → schwer test- und wartbar.</li>
+      <li><b>Lose/Loose Coupling:</b> Klassen kommunizieren über <b>Abstraktionen (Interfaces)</b>; Implementierungen sind austauschbar.</li>
+    </ul>
+    Ziel guten Designs: <b>lose Kopplung + hohe Kohäsion</b>.` },
+
+  { cat: "Grundlagen", q: "Welche OOP-Konzepte werden in Design Patterns genutzt?", a: `
+    <ul>
+      <li><b>Abstraktion</b> – Interfaces / abstrakte Klassen.</li>
+      <li><b>Kapselung (Encapsulation)</b> – Details/Zustand verbergen.</li>
+      <li><b>Vererbung (Inheritance)</b>.</li>
+      <li><b>Polymorphie</b> – Kern vieler Patterns (z. B. Strategy ruft verschiedene Implementierungen über dasselbe Interface).</li>
+      <li><b>Komposition statt Vererbung</b> &amp; „program to an interface, not an implementation".</li>
+    </ul>` },
+
+  { cat: "Grundlagen", q: "Wie können Interfaces helfen, Klassen unabhängiger zu gestalten?", a: `
+    Interfaces trennen das <b>„Was" (Vertrag)</b> vom <b>„Wie" (Implementierung)</b>.
+    <ul>
+      <li>Eine Klasse hängt nur am Interface, nicht an der konkreten Klasse → Implementierungen <b>austauschbar</b>.</li>
+      <li>Ermöglicht <b>Mocking im Test</b>, lose Kopplung, DIP und Dependency Injection.</li>
+    </ul>
+    <div class="app"><b>In unserer App:</b> <code>MovieService</code> hängt am <code>MovieRepository</code>-Interface – egal ob dahinter <code>JdbcMovieRepository</code> oder <code>InMemoryMovieRepository</code> steckt.</div>` },
+
+  { cat: "Grundlagen", q: "Was ist Over-Engineering in Bezug auf Design Patterns? Nenne Auswirkungen.", a: `
+    Patterns/Abstraktionen einbauen, die das aktuelle Problem <b>gar nicht braucht</b> („just in case" = <i>Speculative Generality</i>).
+    <ul>
+      <li>Unnötige <b>Komplexität</b>, schwerer lesbar/verständlich.</li>
+      <li>Mehr Code = mehr <b>Wartungsaufwand &amp; Fehlerquellen</b>.</li>
+      <li>Langsamere Entwicklung, höhere Einarbeitungszeit.</li>
+    </ul>
+    Patterns sollen Probleme <b>lösen</b>, nicht welche schaffen → Prinzip <b>KISS</b> beachten.` },
+
+  // ---------- PATTERNS ----------
+  { cat: "Patterns", q: "Erkläre das Singleton Pattern. Problem? Lösungsansatz?", a: `
+    <b>Typ:</b> Creational.<br>
+    <b>Intent:</b> Sicherstellen, dass eine Klasse <b>genau eine Instanz</b> hat, plus <b>globaler Zugriffspunkt</b>.<br>
+    <b>Problem:</b> Eine gemeinsame Ressource (DB-Verbindung, Logger, Config) soll nur einmal existieren und überall erreichbar sein.<br>
+    <b>Lösung:</b>
+    <ul>
+      <li>Konstruktor <code>private</code> (verhindert <code>new</code> von außen).</li>
+      <li><code>private static</code> Feld für die Instanz.</li>
+      <li><code>public static getInstance()</code> erzeugt die Instanz einmalig (lazy) und cached sie.</li>
+    </ul>
+    <b>Achtung:</b> globaler Zustand, Thread-Sicherheit, erschwert Testbarkeit (oft als Anti-Pattern kritisiert).` },
+
+  { cat: "Patterns", q: "Erkläre das Builder Pattern. Problem? Lösungsansatz?", a: `
+    <b>Typ:</b> Creational.<br>
+    <b>Intent:</b> Komplexe Objekte <b>Schritt für Schritt</b> konstruieren.<br>
+    <b>Problem:</b> Objekt mit vielen (optionalen) Feldern → „Telescoping Constructor" mit langer, fehleranfälliger Parameterliste.<br>
+    <b>Lösung:</b> Konstruktion in eine eigene <b>Builder-Klasse</b> (oft statische innere Klasse) auslagern. Jede Setter-Methode gibt den Builder zurück (Fluent API/Method Chaining), <code>build()</code> erzeugt das Objekt. Man muss nicht alle Schritte aufrufen.
+    <div class="app"><b>In unserer App:</b> <code>Movie.builder().title("Inception").genre("Sci-Fi").releaseYear(2010).build()</code> – statt eines Konstruktors mit vielen Parametern in falscher Reihenfolge.</div>` },
+
+  { cat: "Patterns", q: "Erkläre das Factory Pattern. Problem? Lösungsansatz?", a: `
+    <b>Typ:</b> Creational.<br>
+    <b>Intent:</b> Objekterzeugung <b>kapseln</b> – der Client erzeugt Objekte über eine Factory statt direkt mit <code>new</code>, ohne die konkrete Klasse zu kennen.<br>
+    <b>Problem:</b> <code>new</code> koppelt den Client fest an konkrete Klassen; Auswahl-/Erzeugungslogik ist verstreut.<br>
+    <b>Lösung:</b> Eine Factory-Methode/-Klasse entscheidet, welche konkrete Implementierung eines gemeinsamen Interfaces erzeugt wird.
+    <ul>
+      <li><b>Factory Method:</b> Unterklassen entscheiden, welches Objekt erzeugt wird.</li>
+      <li><b>Abstract Factory:</b> erzeugt Familien verwandter Objekte.</li>
+    </ul>` },
+
+  { cat: "Patterns", q: "Erkläre das Adapter Pattern (Structural). Problem? Lösungsansatz?", a: `
+    <b>Typ:</b> Structural.<br>
+    <b>Intent:</b> Lässt Objekte mit <b>inkompatiblen Interfaces</b> zusammenarbeiten.<br>
+    <b>Problem:</b> Eine bestehende/3rd-Party-Klasse hat nicht das Interface, das der Client erwartet (Folie: App nutzt XML, Analytics-Lib will JSON).<br>
+    <b>Lösung:</b> Ein <b>Adapter</b> implementiert das vom Client erwartete Interface und <b>wrappt</b> das Service-Objekt, übersetzt die Aufrufe. Client und Service bleiben unverändert; der Service weiß nichts vom Adapter.
+    <div class="app"><b>In unserer App:</b> <code>GsonSerializer</code> implementiert unser <code>JsonSerializer</code>-Interface und wrappt die Gson-Bibliothek. Der Controller kennt nur <code>JsonSerializer</code> → Gson ist austauschbar &amp; mockbar (zugleich DIP).</div>` },
+
+  { cat: "Patterns", q: "Erkläre das Strategy Pattern (Behavioral). Problem? Lösungsansatz?", a: `
+    <b>Typ:</b> Behavioral.<br>
+    <b>Intent:</b> Eine Familie <b>austauschbarer Algorithmen</b> hinter einem gemeinsamen Interface kapseln, zur Laufzeit wählbar.<br>
+    <b>Problem:</b> Viele <code>if/else</code>- bzw. <code>switch</code>-Zweige wählen ein Verhalten; neues Verhalten erzwingt Änderung des bestehenden Codes (OCP-Verletzung).<br>
+    <b>Lösung:</b> Jede Variante als eigene <b>Strategy-Klasse</b> hinter einem Interface; der Context bekommt eine Strategy injiziert/ausgewählt und delegiert. Neues Verhalten = neue Klasse, kein Eingriff in bestehenden Code.
+    <div class="app"><b>In unserer App:</b> <code>ErrorMappingStrategy</code> mit <code>NotFound</code>-, <code>BadRequest</code>- und <code>DatabaseError</code>-Strategie; <code>HttpErrorResponder</code> wählt die passende. Neue Exception → neue Strategy.</div>` },
+
+  { cat: "Patterns", q: "Erkläre das Observer Pattern. Problem? Lösungsansatz?", a: `
+    <b>Typ:</b> Behavioral.<br>
+    <b>Intent:</b> Ein <b>Abo-Mechanismus</b>, um mehrere Objekte über Ereignisse eines beobachteten Objekts zu benachrichtigen.<br>
+    <b>Problem:</b> Subscriber wollen über Statusänderungen informiert werden. <i>Polling</i> (ständig nachfragen) ist ineffizient; der Publisher soll nicht alle (auch uninteressierte) benachrichtigen.<br>
+    <b>Lösung:</b> Der <b>Publisher/Subject</b> führt eine Liste von <b>Subscribern</b> und bietet <code>subscribe / unsubscribe / notify</code>. Bei einer Änderung ruft er <code>update()</code> auf allen Subscribern. Er kennt nur das Subscriber-<b>Interface</b> → lose Kopplung.
+    <br>Beispiel: <code>NewsAgency</code> (Publisher) → <code>NewsChannel</code> (Subscriber).` },
+
+  { cat: "Patterns", q: "Erkläre das State Pattern. Problem? Lösungsansatz?", a: `
+    <b>Typ:</b> Behavioral.<br>
+    <b>Intent:</b> Ein Objekt ändert sein <b>Verhalten</b>, wenn sich sein <b>interner Zustand</b> ändert – als hätte es die Klasse gewechselt.<br>
+    <b>Problem:</b> Endlicher Automat (Finite-State-Machine) mit vielen <code>if</code>/<code>switch</code> über den aktuellen Zustand; die Übergangslogik ist über alle Methoden verstreut → schwer wartbar.<br>
+    <b>Lösung:</b> Pro Zustand eine eigene <b>State-Klasse</b>, die das zustandsspezifische Verhalten kapselt. Ein <b>Context</b>-Objekt hält eine Referenz auf das aktuelle State-Objekt und <b>delegiert</b> daran; Zustandswechsel = Austausch des State-Objekts.
+    <br>Beispiel: Ampel <code>Red → Green → Yellow</code>, oder Dokument <code>Draft → Moderation → Published</code>.` },
+
+  { cat: "Patterns", q: "Erkläre das Facade Pattern (Structural).", a: `
+    <b>Typ:</b> Structural.<br>
+    <b>Intent:</b> Bietet eine <b>einfache, einheitliche Schnittstelle</b> zu einem komplexen Subsystem und versteckt dessen Komplexität hinter einer „Fassade".<br>
+    <b>Problem:</b> Clients müssten sonst viele Subsystem-Klassen direkt kennen und korrekt zusammenspielen.<br>
+    <b>Lösung:</b> Eine Facade-Klasse bündelt die Aufrufe.
+    <div class="app"><b>In unserer App:</b> <code>DatabaseUtil</code> versteckt Verbindungsaufbau + Schema-Initialisierung + Start der H2-Console hinter einfachen Methoden.</div>` },
+
+  { cat: "Patterns", q: "Chain of Responsibility (Bonus).", a: `
+    <b>Typ:</b> Behavioral.<br>
+    Eine Anfrage wandert durch eine <b>Kette von Handlern</b>; jeder entscheidet, ob er sie bearbeitet oder weiterreicht. Entkoppelt <b>Sender von Empfänger</b>.
+    <div class="app"><b>Verwandt in unserer App:</b> <code>HttpErrorResponder</code> prüft die Strategien der Reihe nach, bis eine die Exception „unterstützt" – ähnliche Idee.</div>` },
+
+  { cat: "Patterns", q: "Beschreibe ein CREATIONAL Pattern im Detail (Builder).", a: `
+    <b>Pattern:</b> Builder (Creational).<br>
+    <b>Problem:</b> Ein <code>Movie</code> hat mehrere Felder (id, title, genre, releaseYear). Konstruktoren mit vielen Parametern sind unleserlich und fehleranfällig (Reihenfolge!).<br>
+    <b>Lösung:</b> Statische innere <code>Builder</code>-Klasse, Fluent-Methoden geben <code>this</code> zurück, <code>build()</code> erzeugt das Objekt:
+    <div class="app"><b>Code:</b> <code>Movie.builder().title("Inception").genre("Sci-Fi").releaseYear(2010).build()</code><br>
+    <b>Sinnvoll, weil:</b> lesbare, sichere Objekterzeugung; optionale Felder ohne Konstruktor-Explosion.</div>` },
+
+  { cat: "Patterns", q: "Beschreibe ein STRUCTURAL Pattern im Detail (Adapter).", a: `
+    <b>Pattern:</b> Adapter (Structural).<br>
+    <b>Problem:</b> Der Controller war direkt an die konkrete Bibliothek <b>Gson</b> gekoppelt (<code>new Gson()</code>, <code>gson.toJson()</code>).<br>
+    <b>Lösung:</b> Eigenes Interface <code>JsonSerializer</code> + <code>GsonSerializer</code>, das Gson kapselt/„adaptiert".
+    <div class="app"><b>Sinnvoll, weil:</b> der Controller hängt am Interface statt an Gson → JSON-Lib austauschbar (z. B. Jackson), zentral konfigurierbar, im Test mockbar. Erfüllt zugleich <b>DIP</b>.</div>` },
+
+  { cat: "Patterns", q: "Beschreibe ein BEHAVIORAL Pattern im Detail (Strategy).", a: `
+    <b>Pattern:</b> Strategy (Behavioral).<br>
+    <b>Problem:</b> Das Exception→HTTP-Mapping war eine <code>if (e instanceof …)</code>-Kette im Controller. Neue Exception = Kette ändern.<br>
+    <b>Lösung:</b> Interface <code>ErrorMappingStrategy</code> (<code>supports()</code>, <code>statusCode()</code>, <code>message()</code>) mit je einer Strategie pro Fehlertyp; <code>HttpErrorResponder</code> iteriert und wählt die erste passende.
+    <div class="app"><b>Sinnvoll, weil:</b> neue Exception = neue Strategy-Klasse registrieren, ohne bestehenden Code zu ändern → erfüllt zugleich <b>OCP</b> &amp; <b>SRP</b>.</div>` },
+
+  // ---------- SOLID ----------
+  { cat: "SOLID", q: "Aus welchen Teilen besteht SOLID? Was sind die Ziele?", a: `
+    <ul>
+      <li><b>S</b> – Single Responsibility Principle</li>
+      <li><b>O</b> – Open/Closed Principle</li>
+      <li><b>L</b> – Liskov Substitution Principle</li>
+      <li><b>I</b> – Interface Segregation Principle</li>
+      <li><b>D</b> – Dependency Inversion Principle</li>
+    </ul>
+    <b>Ziele:</b> bessere Modularität, weniger Bugs durch Designfehler, höhere <b>Wartbarkeit, Erweiterbarkeit und Testbarkeit</b>, lose Kopplung.` },
+
+  { cat: "SOLID", q: "Erkläre das Single Responsibility Principle (SRP) anhand eines Beispiels.", a: `
+    Eine Klasse soll <b>nur einen Grund zur Änderung</b> haben = genau eine Verantwortlichkeit.<br>
+    <b>Folie:</b> <code>UserManager</code>, der speichern <b>und</b> E-Mail validieren macht → aufteilen in <code>UserRepository</code> (DB) + <code>UserValidator</code> (Validierung).
+    <div class="app"><b>In unserer App:</b> <code>Movie</code> war Datenmodell + Sample-Daten-Generator + JSON-Serialisierung. Reduziert auf <b>reines Datenobjekt</b>; das Exception→HTTP-Mapping wurde aus <code>MovieController</code> in <code>HttpErrorResponder</code> ausgelagert.</div>` },
+
+  { cat: "SOLID", q: "Erkläre das Open/Closed Principle (OCP) anhand eines Beispiels.", a: `
+    <b>Offen für Erweiterung, geschlossen für Modifikation</b> – neue Funktionalität ohne Änderung bestehenden Codes.<br>
+    <b>Folie:</b> <code>PaymentProcessor</code> mit <code>if(method=="credit")…</code> → <code>PaymentMethod</code>-Interface + Implementierungen; neue Zahlart = neue Klasse.
+    <div class="app"><b>In unserer App:</b> <code>ErrorMappingStrategy</code> – eine neue Exception bedeutet eine neue Strategy-Klasse; <code>HttpErrorResponder</code> bleibt unverändert.</div>` },
+
+  { cat: "SOLID", q: "Erkläre das Liskov Substitution Principle (LSP) anhand eines Beispiels.", a: `
+    Objekte einer Unterklasse müssen die Basisklasse <b>ersetzen können, ohne die Korrektheit zu brechen</b>.<br>
+    <b>Folie:</b> <code>Ostrich extends Bird</code> mit <code>fly()</code>, das eine Exception wirft → bricht Code, der <code>fly()</code> erwartet. Besser: <code>Bird</code> + <code>FlyingBird</code> trennen.
+    <div class="app"><b>In unserer App:</b> <code>JdbcMovieRepository</code> und <code>InMemoryMovieRepository</code> erfüllen denselben <code>MovieRepository</code>-Vertrag – <code>MovieService</code> funktioniert mit beiden identisch.</div>` },
+
+  { cat: "SOLID", q: "Erkläre das Interface Segregation Principle (ISP) anhand eines Beispiels.", a: `
+    Clients sollen <b>nicht von Methoden abhängen, die sie nicht nutzen</b> → kleine, fokussierte Interfaces.<br>
+    <b>Folie:</b> <code>Worker{work, eat}</code>; ein <code>Robot</code> müsste <code>eat()</code> implementieren (UnsupportedOperation) → aufteilen in <code>Workable</code> + <code>Eatable</code>.
+    <div class="app"><b>In unserer App:</b> <code>MovieRepository</code> in <code>MovieReader</code> (findAll) + <code>MovieWriter</code> (add/update/delete/deleteAll) getrennt. Ein nur-lesender Client hängt nur am <code>MovieReader</code>.</div>` },
+
+  { cat: "SOLID", q: "Erkläre das Dependency Inversion Principle (DIP) anhand eines Beispiels.", a: `
+    High-Level-Module sollen <b>nicht von Low-Level-Modulen</b> abhängen, sondern <b>beide von Abstraktionen</b> (Interfaces).<br>
+    <b>Folie:</b> <code>NotificationManager</code> erzeugt selbst <code>new SMTPEmailService()</code> → fest gekoppelt. Besser: <code>EmailService</code>-Interface + Injection.
+    <div class="app"><b>In unserer App:</b> <code>MovieService</code> hängt am <code>MovieRepository</code>-Interface (nicht an JDBC), <code>MovieController</code> am <code>JsonSerializer</code>-Interface (nicht an Gson). Abhängigkeiten werden injiziert.</div>` },
+
+  // ---------- DEPENDENCY INJECTION ----------
+  { cat: "Dependency Injection", q: "Was ist Dependency Injection? Was bedeutet „Dependency\" hier?", a: `
+    <b>DI</b> = Technik, bei der eine Klasse ihre Abhängigkeiten <b>von außen bekommt</b>, statt sie selbst mit <code>new</code> zu erzeugen (Trennung von Erzeugung und Nutzung).<br>
+    <b>Dependency</b> = ein Objekt, das die Klasse zum Arbeiten <b>braucht</b>.
+    <div class="app"><b>In unserer App:</b> <code>MovieService</code> braucht ein <code>MovieRepository</code> → es wird per Konstruktor injiziert: <code>new MovieService(repository)</code>.</div>` },
+
+  { cat: "Dependency Injection", q: "Nenne Ziele von Dependency Injection.", a: `
+    <ul>
+      <li><b>Lose Kopplung</b> – Erzeugung von Nutzung entkoppeln.</li>
+      <li>Unterstützt <b>SRP</b> und <b>DIP</b>.</li>
+      <li><b>Einfaches Testen</b> – Mocks/Stubs injizierbar.</li>
+      <li><b>Austauschbarkeit</b> der Implementierungen, bessere Wartbarkeit &amp; Flexibilität.</li>
+    </ul>` },
+
+  { cat: "Dependency Injection", q: "Welche Arten von DI gibt es? Unterschiede, Vor-/Nachteile?", a: `
+    <ul>
+      <li><b>Constructor Injection</b> (über Konstruktor): + Pflicht-Abhängigkeiten garantiert, Objekt immer vollständig/immutable, gut testbar. − bei sehr vielen Deps lange Parameterliste. <i>(In unserer App verwendet.)</i></li>
+      <li><b>Setter/Method Injection</b> (über Setter): + flexibel, optionale Abhängigkeiten, nachträglich änderbar. − Objekt kann unvollständig sein, mutable.</li>
+      <li><b>Field/Interface Injection</b> (direkt ins Feld, oft per Framework/Reflection, z. B. <code>@Autowired</code>): + wenig Boilerplate. − schwer testbar ohne Framework, versteckte Abhängigkeiten.</li>
+    </ul>
+    <b>Empfehlung:</b> Constructor Injection bevorzugen.` },
+
+  // ---------- CLEAN CODE & SMELLS ----------
+  { cat: "Clean Code", q: "Was ist Clean Code?", a: `
+    Code, der für andere Entwickler <b>sofort verständlich</b> ist – nicht nur clevere Algorithmen.
+    <ul>
+      <li>Gute <b>Benennung</b>, kleine Klassen/Methoden, keine <b>Magic Numbers</b>.</li>
+      <li>Lesbar, wartbar, leicht erweiterbar.</li>
+    </ul>` },
+
+  { cat: "Clean Code", q: "Was ist Technical Debt? Ursachen?", a: `
+    „Technische Schuld" = <b>Folgekosten</b> durch schnelle/unsaubere Lösungen, die später teuer nachgebessert werden müssen.<br>
+    <b>Ursachen:</b> Business-/Zeitdruck, fehlendes Verständnis (Mgmt sieht Wert von Refactoring nicht), hohe Kopplung der Komponenten, fehlende Tests/Doku, verzögertes Refactoring, lange parallele Branches, Inkompetenz.` },
+
+  { cat: "Clean Code", q: "Rule of Three (Refactoring)", a: `
+    <ol>
+      <li>Beim <b>ersten</b> Mal: einfach umsetzen.</li>
+      <li>Beim <b>zweiten</b> (ähnlichen) Mal: zähneknirschend wiederholen.</li>
+      <li>Beim <b>dritten</b> Mal: <b>refactoren</b> (z. B. Duplikate extrahieren).</li>
+    </ol>
+    Eng verwandt mit <b>DRY</b>.` },
+
+  { cat: "Clean Code", q: "Refactoring – wann ist es richtig gemacht?", a: `
+    <ul>
+      <li>Code wird <b>sauberer</b> – Lesbarkeit/Struktur verbessern sich (sonst Ziel verfehlt).</li>
+      <li><b>Kleine, fokussierte</b> Schritte statt großer Umbauten.</li>
+      <li><b>Keine neue Funktionalität</b> während des Refactorings.</li>
+      <li>Alle bestehenden <b>Tests müssen danach grün</b> sein.</li>
+    </ul>` },
+
+  { cat: "Clean Code", q: "Code Smells – die 4 Hauptgruppen", a: `
+    <ul>
+      <li><b>Bloaters:</b> aufgebläht – Long Method, Large Class, Primitive Obsession, Long Parameter List, Data Clumps.</li>
+      <li><b>OO-Abusers:</b> falsch genutzte OOP – z. B. Vererbung nur zum Code-Reuse (besser Komposition).</li>
+      <li><b>Change Preventers:</b> eine Änderung erzwingt viele Änderungen an anderen Stellen.</li>
+      <li><b>Dispensables:</b> Entbehrliches – Comments, Duplicate Code, Dead Code, Speculative Generality.</li>
+    </ul>` },
+
+  { cat: "Clean Code", q: "KISS & DRY – was bedeuten sie?", a: `
+    <ul>
+      <li><b>KISS</b> (Keep It Simple, Stupid): so einfach wie möglich; kleine Methoden (~40–50 Zeilen), eine Aufgabe pro Methode → Bugs schneller finden.</li>
+      <li><b>DRY</b> (Don't Repeat Yourself): kein Copy-Paste; Logik nur an <b>einer</b> Stelle → nur einmal ändern.</li>
+    </ul>` },
+
+  { cat: "Clean Code", q: "Komposition vs. Vererbung – wann was?", a: `
+    Vererbung nur bei echter <b>„ist-ein"</b>-Beziehung. Wird sie nur zum <b>Code-Reuse</b> missbraucht (<code>Car extends Logger</code>), entsteht ein OO-Abuser-Smell.<br>
+    Besser <b>Komposition/Delegation</b>: <code>Car</code> <b>hat</b> einen <code>Logger</code> (als Feld). Grundsatz: <b>„Composition over inheritance"</b>.` },
+
+  // ---------- ERWEITERUNG: GRUNDLAGEN ----------
+  { cat: "Grundlagen", q: "Was macht Code gut bzw. schlecht?", a: `
+    <b>Schlechter Code:</b> schwer lesbar, schlechte Variablen-/Methodennamen, aufgeblähte Klassen/Methoden, Magic Numbers, Duplikate, hohe Kopplung, keine Tests.<br>
+    <b>Guter Code:</b> für andere sofort verständlich, gute Namen, kleine fokussierte Einheiten, keine Duplikate, lose gekoppelt, getestet, leicht erweiterbar.` },
+
+  { cat: "Grundlagen", q: "Was ist der Unterschied zwischen Design Principle und Design Pattern?", a: `
+    <ul>
+      <li><b>Design Principle:</b> High-Level-<b>Richtlinie/Regel</b> für gutes Design (z. B. SRP, DRY, KISS). Das „Warum".</li>
+      <li><b>Design Pattern:</b> konkrete, wiederverwendbare <b>Lösungsschablone</b> für ein wiederkehrendes Problem (z. B. Strategy, Adapter). Das „Wie".</li>
+    </ul>
+    Merksatz: <b>Prinzipien sind die Regeln des guten Designs, Patterns der Werkzeugkasten</b> wiederverwendbarer Lösungen.` },
+
+  { cat: "Grundlagen", q: "Charakteristika von Design Patterns", a: `
+    <ul>
+      <li>Adressieren ein <b>konkretes Problem</b> und liefern eine Lösung.</li>
+      <li>Dokumentieren <b>gut getestete Design-Erfahrung</b>.</li>
+      <li>Identifizieren und spezifizieren <b>Abstraktionen</b>.</li>
+      <li>Liefern ein <b>gemeinsames Vokabular</b> und Verständnis.</li>
+      <li>Sind ein Mittel zur <b>Dokumentation von Software-Architektur</b>.</li>
+      <li>Helfen beim Erstellen/Warten <b>komplexer, heterogener Systeme</b>.</li>
+    </ul>` },
+
+  { cat: "Grundlagen", q: "Warum sind Prinzipien & Patterns wichtig? (Maintainability, Scalability, Testability)", a: `
+    <ul>
+      <li><b>Maintainability (Wartbarkeit):</b> sauberer Code ist leichter zu lesen/ändern/debuggen; eine Änderung bricht nicht unzusammenhängende Teile.</li>
+      <li><b>Scalability (Skalierbarkeit):</b> neue Features mit minimaler Änderung am Bestand; modular &amp; erweiterbar durch Abstraktion (Bsp: Strategy → neue Zahlart ohne Kernänderung).</li>
+      <li><b>Testability (Testbarkeit):</b> Trennung der Belange + lose Kopplung → einfaches Unit-Testing; DI + Interfaces ermöglichen Mocking.</li>
+    </ul>` },
+
+  { cat: "Grundlagen", q: "Was passiert ohne gutes Design?", a: `
+    <ul>
+      <li>Code wird ein „Spaghetti-Code"-Knäuel.</li>
+      <li>Kleine Änderungen verursachen Bugs im ganzen System.</li>
+      <li>Teams können schlecht zusammenarbeiten.</li>
+      <li>Features dauern länger.</li>
+    </ul>` },
+
+  // ---------- ERWEITERUNG: PATTERNS ----------
+  { cat: "Patterns", q: "Erkläre das Prototype Pattern (Creational).", a: `
+    <b>Typ:</b> Creational.<br>
+    <b>Intent:</b> Neue Objekte durch <b>Klonen</b> eines bestehenden „Prototyps" erzeugen, statt sie teuer von Grund auf zu bauen.<br>
+    <b>Problem:</b> Objekterzeugung ist teuer/komplex, oder die konkrete Klasse soll zur Laufzeit nicht bekannt sein.<br>
+    <b>Lösung:</b> Ein <code>clone()</code>/Kopier-Mechanismus erzeugt eine Kopie des vorhandenen Objekts inkl. Zustand.` },
+
+  { cat: "Patterns", q: "Erkläre das Bridge Pattern (Structural).", a: `
+    <b>Typ:</b> Structural.<br>
+    <b>Intent:</b> Trennt eine <b>Abstraktion</b> von ihrer <b>Implementierung</b>, sodass beide unabhängig variieren können.<br>
+    <b>Problem:</b> Zwei Dimensionen (z. B. Form × Farbe) würden per Vererbung zu einer Klassenexplosion führen.<br>
+    <b>Lösung:</b> Zwei getrennte Hierarchien, per <b>Komposition</b> verbunden – die Abstraktion hält eine Referenz auf die Implementierung.` },
+
+  { cat: "Patterns", q: "Erkläre das Composite Pattern (Structural).", a: `
+    <b>Typ:</b> Structural.<br>
+    <b>Intent:</b> Objekte in <b>Baumstrukturen</b> anordnen und Einzelobjekte sowie Kompositionen <b>einheitlich</b> über dasselbe Interface behandeln.<br>
+    <b>Problem:</b> Client müsste sonst zwischen „Blatt" und „Container" unterscheiden.<br>
+    <b>Lösung:</b> Gemeinsames Interface für Blätter und Container; Container delegieren an ihre Kinder. Bsp: Datei/Ordner, UI-Komponenten.` },
+
+  { cat: "Patterns", q: "Abstract Factory vs. Factory Method – Unterschied?", a: `
+    <ul>
+      <li><b>Factory Method:</b> eine Methode, deren <b>Unterklassen entscheiden</b>, welche konkrete Klasse erzeugt wird – erzeugt <b>ein</b> Produkt.</li>
+      <li><b>Abstract Factory:</b> ein Interface zur Erzeugung ganzer <b>Familien verwandter Produkte</b>, ohne deren konkrete Klassen zu nennen.</li>
+    </ul>
+    Beide entkoppeln den Client von <code>new</code> und konkreten Klassen.` },
+
+  // ---------- ERWEITERUNG: CLEAN CODE / SMELLS ----------
+  { cat: "Clean Code", q: "Bloater: Primitive Obsession", a: `
+    Konzepte werden mit <b>Primitiven</b> (String, int) statt mit kleinen eigenen Klassen abgebildet („ist ja nur ein Feld").<br>
+    <b>Problem:</b> Logik/Validierung verstreut, keine Typsicherheit (z. B. Geld als <code>double</code>, Telefonnr. als <code>String</code>).<br>
+    <b>Lösung:</b> zusammengehörige Felder in <b>Klassen/Value Objects</b> gruppieren.` },
+
+  { cat: "Clean Code", q: "Bloater: Long Parameter List & Data Clumps", a: `
+    <ul>
+      <li><b>Long Parameter List:</b> mehr als 3–4 Parameter pro Methode → Zeichen für mehrere Algorithmen in einer Methode.</li>
+      <li><b>Data Clumps:</b> dieselben Variablengruppen tauchen an mehreren Stellen auf (z. B. Connection-String-Bündel).</li>
+    </ul>
+    <b>Lösung:</b> zu einem <b>Parameter-Objekt</b> zusammenfassen / Daten als Objekt übergeben.` },
+
+  { cat: "Clean Code", q: "OO-Abuser: Refused Bequest", a: `
+    Eine Unterklasse nutzt nur <b>einen Teil</b> der geerbten Methoden/Felder → Vererbung passt nicht wirklich.<br>
+    <b>Lösung:</b>
+    <ul>
+      <li>Wenn Vererbung sinnvoll: ungenutzte Felder/Methoden bereinigen, Gemeinsames in echte Superklasse extrahieren.</li>
+      <li>Wenn nicht: Vererbung durch <b>Komposition</b> ersetzen.</li>
+    </ul>` },
+
+  { cat: "Clean Code", q: "Change Preventer: Divergent Change vs. Shotgun Surgery", a: `
+    <ul>
+      <li><b>Divergent Change:</b> <i>eine</i> Klasse muss aus <b>vielen verschiedenen Gründen</b> geändert werden → zu viele Verantwortlichkeiten (SRP-Verstoß).</li>
+      <li><b>Shotgun Surgery:</b> <i>eine</i> Änderung erzwingt <b>viele kleine Änderungen in vielen Klassen</b> → Verantwortung zu stark verstreut.</li>
+    </ul>
+    <b>Lösung:</b> Verantwortlichkeiten sinnvoll bündeln (zusammengehöriges Verhalten in eine Klasse).` },
+
+  { cat: "Clean Code", q: "Change Preventer: Parallel Inheritance Hierarchies", a: `
+    Jedes Mal, wenn du eine Unterklasse einer Hierarchie anlegst, musst du auch eine Unterklasse einer <b>anderen</b> Hierarchie anlegen.<br>
+    <b>Lösung:</b> <b>Komposition</b> – Instanzen der einen Hierarchie referenzieren Instanzen der anderen.` },
+
+  { cat: "Clean Code", q: "Dispensable: Comments – wann sind sie OK?", a: `
+    „Der beste Kommentar ist ein guter Name für Methode/Klasse." Code so strukturieren, dass Kommentare <b>unnötig</b> werden.<br>
+    <b>Kommentare berechtigt für:</b>
+    <ul>
+      <li><b>Warum</b> etwas auf bestimmte Weise umgesetzt ist.</li>
+      <li>Erklärung <b>komplexer Algorithmen</b>.</li>
+    </ul>` },
+
+  { cat: "Clean Code", q: "Dispensable: Duplicate Code – Lösungen", a: `
+    <ul>
+      <li>Gleicher Code in mehreren Methoden einer Klasse → <b>Methode extrahieren</b>.</li>
+      <li>In Subklassen gleicher Ebene → Methode extrahieren &amp; gemeinsames Feld <b>hochziehen (pull up)</b>.</li>
+      <li>In allen Zweigen eines <code>if</code> → <b>aus dem Bedingungsbaum herausziehen</b>.</li>
+      <li>In verschiedenen Klassen → gemeinsame <b>Superklasse</b> oder neue Komponente.</li>
+    </ul>` },
+
+  { cat: "Clean Code", q: "Was sind Magic Numbers?", a: `
+    Unbenannte Zahlen/Strings direkt im Code (z. B. <code>8080</code>, <code>200</code>), deren Bedeutung unklar ist.<br>
+    <b>Lösung:</b> durch <b>benannte Konstanten</b> ersetzen.
+    <div class="app"><b>In unserer App:</b> <code>private static final int SERVER_PORT = 8080;</code> statt der nackten Zahl im Code.</div>` },
+];
+
+let active = "Alle";
+let query = "";
+const list = document.getElementById("list");
+const cats = ["Alle", ...[...new Set(CARDS.map(c => c.cat))]];
+
+function buildCats() {
+  const wrap = document.getElementById("cats");
+  wrap.innerHTML = "";
+  cats.forEach(c => {
+    const b = document.createElement("button");
+    b.className = "cat-btn" + (c === active ? " active" : "");
+    b.textContent = c;
+    b.onclick = () => { active = c; buildCats(); render(); };
+    wrap.appendChild(b);
+  });
+}
+
+function esc(s){ return s.replace(/[&<>]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[m])); }
+function highlight(text){
+  if(!query) return text;
+  const q = query.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  return text.replace(new RegExp("("+q+")","gi"), "<mark>$1</mark>");
+}
+
+function render() {
+  const q = query.toLowerCase();
+  const filtered = CARDS.filter(c =>
+    (active === "Alle" || c.cat === active) &&
+    (q === "" || c.q.toLowerCase().includes(q) || c.a.toLowerCase().includes(q))
+  );
+  document.getElementById("counter").textContent = filtered.length + " Karten";
+  if (!filtered.length) { list.innerHTML = '<div class="empty">Keine Karten gefunden.</div>'; return; }
+  list.innerHTML = "";
+  filtered.forEach(c => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML =
+      '<div class="card-head"><span class="tag">'+c.cat+'</span>'+
+      '<span class="q">'+highlight(esc(c.q))+'</span>'+
+      '<span class="chev">▶</span></div>'+
+      '<div class="answer"><div class="answer-inner">'+c.a+'</div></div>';
+    card.querySelector(".card-head").onclick = () => card.classList.toggle("open");
+    list.appendChild(card);
+  });
+}
+
+document.getElementById("search").addEventListener("input", e => { query = e.target.value; render(); });
+document.getElementById("shuffle").onclick = () => {
+  for (let i = CARDS.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [CARDS[i],CARDS[j]]=[CARDS[j],CARDS[i]]; }
+  render();
+};
+let allOpen = false;
+document.getElementById("toggleAll").onclick = (e) => {
+  allOpen = !allOpen;
+  document.querySelectorAll(".card").forEach(c => c.classList.toggle("open", allOpen));
+  e.target.textContent = allOpen ? "⬆︎ Zu" : "⬇︎ Alle";
+};
+
+buildCats();
+render();
+</script>
+</body>
+</html>
