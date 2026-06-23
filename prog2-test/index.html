@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Prog2 Prüfungsvorbereitung</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header>
+    <h1>Prog2 Prüfungsvorbereitung</h1>
+    <nav id="tabs">
+      <button data-tab="learn" class="active">Lernen</button>
+      <button data-tab="theory">Theorie</button>
+      <button data-tab="quiz">Quiz</button>
+    </nav>
+  </header>
+  <main>
+    <section id="view-learn" class="view"></section>
+    <section id="view-theory" class="view hidden"></section>
+    <section id="view-quiz" class="view hidden"></section>
+  </main>
+
+  <!-- Daten: Basis zuerst, dann Content-Blöcke -->
+  <script src="data/topics.js"></script>
+  <script src="data/content-201.js"></script>
+  <script src="data/content-202.js"></script>
+  <script src="data/content-203.js"></script>
+  <script src="data/content-204.js"></script>
+  <!-- Ausführliche Theorie (ersetzt die knappen Einheiten aus den content-Dateien) -->
+  <script src="data/theory-201.js"></script>
+  <script src="data/theory-202.js"></script>
+  <script src="data/theory-203.js"></script>
+  <script src="data/theory-204.js"></script>
+  <!-- Logik -->
+  <script src="js/leitner.js"></script>
+  <script src="js/quiz.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/highlight.js"></script>
+  <!-- UI -->
+  <script src="js/app.js"></script>
+</body>
+</html>
